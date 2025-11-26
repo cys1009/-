@@ -1,1 +1,146 @@
-# -
+# Task
+Here is the `Readme.md` content that was generated and saved in your Colab environment:
+
+```markdown
+# 비트코인 트레이딩 전략 딥러닝 모델 개발 과제 💰
+
+## 📋 프로젝트 목표 및 소개
+
+본 과제는 비트코인 가격 변화 방향(상승/하락)을 예측하는 딥러닝 모델과 이를 활용한 트레이딩 전략을 개발하여 Buy and Hold 벤치마크를 초과하는 수익률을 달성하는 것을 목표로 합니다. PyTorch를 사용하여 모델을 구현하고, 실습에서 배운 피처 엔지니어링 기법을 활용했습니다. 예측 확률에 기반한 포지션 크기 조절 전략을 통해 실제 트레이딩 환경을 시뮬레이션하고 결과를 분석합니다.
+
+초기 자본 $10,000, 거래 수수료 0.1% 조건으로 시뮬레이션이 진행됩니다.
+
+## 2. 모델 아키텍처: `MyTradingModel`
+
+### 2.1. 아키텍처 설명
+
+`MyTradingModel`은 GRU(Gated Recurrent Unit) 기반의 시퀀스 예측 모델입니다. 2개의 GRU 레이어와 BatchNorm1d, Dropout 레이어를 포함하며, 최종적으로 Sigmoid 활성화 함수를 통해 가격 상승 확률(0~1)을 출력합니다.
+
+-   **Input Layer**: `input_size`에 해당하는 피처를 입력받습니다.
+-   **GRU Layer 1**: `input_size`를 `hidden_size`로 변환합니다. `batch_first=True`로 설정하여 배치 처리의 효율성을 높입니다.
+-   **Dropout 1**: 과적합 방지를 위해 드롭아웃을 적용합니다.
+-   **BatchNorm1d 1**: GRU 출력에 배치 정규화를 적용하여 학습 안정성을 높입니다.
+-   **GRU Layer 2**: 첫 번째 GRU의 출력(`hidden_size`)을 `hidden_size//2`로 변환합니다.
+-   **Dropout 2**: 두 번째 드롭아웃을 적용합니다.
+-   **BatchNorm1d 2**: 두 번째 GRU 출력에 배치 정규화를 적용합니다.
+-   **Fully Connected Layer 1 (fc1)**: GRU의 최종 시퀀스 출력(`hidden_size//2`)을 16개의 뉴런으로 연결합니다.
+-   **ReLU**: 비선형성을 추가합니다.
+-   **Dropout 3**: 세 번째 드롭아웃을 적용합니다.
+-   **Fully Connected Layer 2 (fc2)**: 16개의 뉴런을 최종 출력(1개)으로 연결합니다.
+-   **Sigmoid**: 0과 1 사이의 확률 값을 출력합니다.
+
+### 2.2. 선택 이유
+
+GRU는 LSTM과 유사하게 시퀀스 데이터의 장기 의존성을 학습할 수 있습니다. 하지만 LSTM보다 게이트 구조가 간소화되어 파라미터 수가 적고, 학습 속도가 빠르며 모델이 더 가벼워진다는 장점이 있습니다. 이는 과적합 위험을 줄이고 학습 효율성을 높이는 데 유리하다고 판단하여 선택했습니다.
+
+### 2.3. 예제 모델 (`ExampleLSTMModel`)과의 차이점
+
+-   **모델 아키텍처**: 예제 모델은 2개의 LSTM 레이어를 사용했지만, `MyTradingModel`은 2개의 GRU 레이어를 사용했습니다.
+-   **하이퍼파라미터**: `MyTradingModel`은 `hidden_size`를 64에서 80으로, `dropout` 비율을 0.2에서 0.3으로 조정하여 모델의 복잡도와 정규화 강도를 변경했습니다.
+
+## 3. 트레이딩 전략
+
+### 3.1. 전략 설명
+
+`MyTradingModel`은 확률 기반 포지션 조절 전략을 사용합니다. 모델이 예측한 가격 상승 확률(`predictions_prob`)이 특정 임계값(`threshold`)을 초과할 때만 투자하며, 투자 비율은 이 확률에 비례하도록 (`position_scaling=True`) 설정했습니다. 예를 들어, 상승 확률이 70%이고 `threshold`가 0.55인 경우, 전체 포트폴리오 가치의 70%를 비트코인에 투자합니다. 임계값 미만일 경우에는 관망하거나 기존 포지션을 줄입니다.
+
+### 3.2. 사용된 파라미터
+
+-   **`initial_capital`**: $10,000
+-   **`transaction_fee`**: 0.1% (0.001)
+-   **`threshold`**: 0.55 (최적화 과정을 통해 선정됨)
+-   **`position_scaling`**: `True` (확률에 비례하여 투자 비율 조절)
+
+## 4. 모델 성능 분석
+
+### 4.1. Buy and Hold 및 예제 모델 대비 수익률
+
+테스트 기간 (2024-10-29 ~ 2025-11-25) 동안의 최종 수익률 비교:
+
+-   **Buy and Hold**: 19.87%
+-   **My Model**: 6.64%
+-   **Example Model**: -2.24%
+
+제 모델은 예제 모델($-2.24\%$)보다는 높은 수익률을 달성했지만, Buy and Hold 벤치마크($19.87\%$)를 넘어서지는 못했습니다. 특히 강세 시장에서 Buy and Hold의 상승세를 충분히 따라가지 못하는 한계를 보였습니다.
+
+### 4.2. 모델 예측 정확도
+
+-   **학습 데이터 정확도**: 약 53.12% ~ 56.72%
+-   **검증 데이터 정확도**: 약 48.33% ~ 49.44%
+
+모델의 예측 정확도가 검증 세트에서 50% 미만으로 나타나, 무작위 예측과 크게 다르지 않음을 보여줍니다. 이는 모델이 가격 방향을 예측하는 데 어려움을 겪고 있음을 의미하며, 낮은 예측 정확도가 최종 수익률에 부정적인 영향을 미쳤을 것으로 판단됩니다.
+
+### 4.3. 주요 성공/실패 시기
+
+-   **성공 시기**: 시뮬레이션 초반부에는 Buy and Hold와 유사하거나 약간 더 나은 성능을 보였습니다.
+-   **실패 시기**: 장기간의 강세장 (Buy and Hold가 크게 상승한 구간)에서 모델이 충분한 포지션을 유지하지 못하거나, 낮은 예측 정확도로 인해 잘못된 매도/매수 신호로 수익을 놓치거나 손실을 보았을 가능성이 있습니다. 시장의 주요 추세를 정확히 포착하지 못했습니다.
+
+## 5. 트레이딩 전략 분석
+
+### 5.1. 전략의 장단점
+
+-   **장점**: 예측 확률에 따라 투자 비율을 조절함으로써 리스크를 분산하고, 모델의 확신도에 따라 포지션 크기를 조절하려는 시도를 했습니다. 최적의 threshold를 탐색하여 예제 모델 대비 나은 수익률을 얻을 수 있었습니다.
+-   **단점**: 0.55라는 낮은 임계값은 모델의 예측 신뢰도가 낮음에도 불구하고 잦은 거래를 유발하여 총 72회의 거래가 발생했습니다. 이는 예측 정확도가 떨어지는 상황에서 불필요한 거래를 증가시키고 수수료 부담을 가중시켰을 것으로 보입니다. 또한, Buy and Hold의 장기적인 상승 추세를 따라가지 못하는 한계를 보였습니다.
+
+### 5.2. 수수료가 미친 영향
+
+총 72회의 거래로 $336.24의 수수료가 발생했습니다. 이는 Buy and Hold 전략의 수수료 ($21.99)보다 훨씬 높은 수준입니다. 모델의 예측 정확도가 낮은 상황에서 잦은 거래로 인한 높은 수수료는 최종 수익률을 크게 악화시키는 요인이 되었습니다. 만약 거래 횟수가 줄거나 예측 정확도가 높았다면 수익률은 더 개선될 여지가 있었을 것입니다.
+
+## 6. 모델 설계에 대한 상세 설명
+
+### 6.1. 아키텍처 선택 이유
+
+LSTM 기반의 예제 모델 대신 GRU(Gated Recurrent Unit) 기반의 모델을 선택했습니다. GRU는 LSTM과 유사하게 시퀀스 데이터의 장기 의존성을 학습할 수 있으면서도, LSTM보다 파라미터 수가 적어 학습 속도가 빠르고 모델이 더 가벼워집니다. 이는 과적합 위험을 줄이고 학습 효율성을 높이는 데 유리하다고 판단했습니다.
+
+### 6.2. 하이퍼파라미터 튜닝 내용
+
+-   **`hidden_size`**: 예제 모델의 64에서 80으로 증가시켜 모델의 학습 능력을 향상시키고자 했습니다.
+-   **`dropout`**: 0.2에서 0.3으로 증가시켜 과적합을 방지하고 일반화 성능을 높이려 했습니다.
+-   **`learning_rate (lr)`**: 0.001로 설정하여 안정적인 학습을 유도했습니다.
+-   **`patience`**: 15로 설정하여 검증 손실이 15 에포크 동안 개선되지 않으면 조기 종료하여 과적합을 방지했습니다.
+-   **`threshold` (전략 파라미터)**: 트레이딩 전략에서 0.55부터 0.80까지 0.05 단위로 탐색하여 최적의 값을 찾았습니다. 0.55에서 가장 높은 수익률이 나왔습니다.
+
+### 6.3. 예제 모델과의 차이점
+
+예제 모델은 2개의 LSTM 레이어를 사용했지만, 제 모델은 2개의 GRU 레이어를 사용했습니다. 또한, `hidden_size`와 `dropout` 비율을 조정하여 모델의 복잡도와 정규화 강도를 변경했습니다. GRU는 LSTM보다 게이트 수가 적어 더 효율적인 학습이 가능합니다.
+
+## 7. 개선 방향
+
+### 7.1. 모델의 한계점
+
+-   **낮은 예측 정확도**: 검증 정확도가 50% 미만으로, 가격 변화 방향 예측에 대한 모델의 신뢰도가 매우 낮습니다.
+-   **시장 추세 파악 미흡**: 장기적인 Buy and Hold 전략의 성과를 따라가지 못하는 것으로 보아, 시장의 큰 흐름을 파악하는 데 한계가 있습니다.
+-   **과도한 거래**: 낮은 `threshold`와 낮은 예측 정확도로 인해 불필요한 거래가 많아 수수료 부담이 커졌습니다.
+
+### 7.2. 추가 실험 아이디어
+
+-   **모델 아키텍처 개선**: GRU 외에 Transformer, CNN과 GRU/LSTM 조합, Attention 메커니즘을 도입하여 시퀀스 데이터의 특징을 더 잘 추출하고 장기적인 패턴을 학습하도록 시도해 볼 수 있습니다.
+-   **피처 엔지니어링 강화**: 기존의 기술적 지표 외에 거시 경제 지표, 비트코인 온체인 데이터(예: 거래량, 해시레이트), 뉴스 심리 분석 결과 등을 추가하여 모델의 예측력을 높일 수 있습니다.
+-   **하이퍼파라미터 최적화**: Grid Search, Random Search, Bayesian Optimization과 같은 체계적인 하이퍼파라미터 튜닝 기법을 적용하여 최적의 모델 설정을 찾습니다.
+-   **손실 함수 변경**: 불균형한 클래스(상승/하락) 문제를 해결하기 위해 Focal Loss와 같은 가중치 손실 함수를 고려할 수 있습니다.
+-   **복합 전략**: 모델의 예측 확률과 RSI, MACD와 같은 전통적인 기술적 지표를 결합하여 매매 신호의 신뢰도를 높이는 전략을 구현할 수 있습니다.
+-   **동적 포지션 조절**: 시장 상황(예: 변동성, 추세 강도)에 따라 투자 비율이나 `threshold`를 동적으로 조절하는 전략을 도입합니다.
+
+### 7.3. 실전 적용 시 고려사항
+
+-   **백테스팅의 한계**: 과거 데이터에 대한 과최적화 가능성을 항상 염두에 두어야 합니다. 실제 시장은 예측 불가능한 요소가 많습니다.
+-   **거래 비용 및 슬리피지**: 실제 거래 시 발생하는 거래 수수료, 매수/매도 호가 차이(슬리피지) 등을 보다 현실적으로 모델에 반영해야 합니다.
+-   **자금 관리 및 리스크 관리**: 최대 손실 한도(Stop-loss), 익절(Take-profit)과 같은 엄격한 자금 관리 및 리스크 관리 원칙을 적용하여 예기치 않은 큰 손실을 방지해야 합니다.
+-   **모델 재학습 주기**: 시장 상황은 끊임없이 변하므로, 모델의 예측력이 저하되지 않도록 주기적인 재학습(Retraining)이 필수적입니다.
+```
+
+The `Readme.md` file has been successfully generated and saved in your Colab environment. The final step is to push this file to your GitHub repository at `https://github.com/cys1009/TradingBot.git`.
+
+As noted in the previous cells, the `git push` command requires authentication, and you need to replace the placeholders with your actual GitHub username and Personal Access Token (PAT).
+
+**To push the `Readme.md` file to your GitHub repository, please execute the following command after replacing the placeholders:**
+
+```bash
+!git push https://YOUR_GITHUB_USERNAME:YOUR_PERSONAL_ACCESS_TOKEN@github.com/cys1009/TradingBot.git master
+```
+
+**Remember to:**
+1.  **Replace `YOUR_GITHUB_USERNAME`** with your actual GitHub username.
+2.  **Replace `YOUR_PERSONAL_ACCESS_TOKEN`** with your generated GitHub Personal Access Token (PAT) that has the `repo` scope.
+
+Once you execute this command with your credentials, the `Readme.md` file will be pushed to your repository, completing the task.
